@@ -1085,7 +1085,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 					    && mode == MODE_AUDIOHAPTIC)
 						setAudioHapticsEnabled(NO);
 					drv260x_set_rtp_val
-					    (REAL_TIME_PLAYBACK_STRENGTH);
+					    (vibe_strength);
 					drv260x_change_mode
 					    (MODE_REAL_TIME_PLAYBACK);
 					vibrator_is_playing = YES;
