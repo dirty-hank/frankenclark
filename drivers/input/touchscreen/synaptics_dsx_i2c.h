@@ -276,6 +276,7 @@ enum {
 	STATE_UNKNOWN,
 	STATE_ACTIVE,
 	STATE_SUSPEND,
+	STATE_PREVENT_SLEEP,
 	STATE_STANDBY = 4,
 	STATE_BL,
 	STATE_INIT,
@@ -463,6 +464,9 @@ struct synaptics_rmi4_data {
 	int sensor_max_x;
 	int sensor_max_y;
 	bool irq_enabled;
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	bool prevent_sleep;
+#endif
 	atomic_t touch_stopped;
 	bool flash_enabled;
 	bool ic_on;
