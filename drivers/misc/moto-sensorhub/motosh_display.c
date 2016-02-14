@@ -42,6 +42,9 @@
 
 #include <linux/motosh.h>
 
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+#include <linux/input/doubletap2wake.h>
+#endif
 struct qd_trace_event_t {
 	u8 op;
 	u8 buffer_id;
@@ -266,7 +269,9 @@ int motosh_display_handle_touch_locked(struct motosh_data *ps_motosh)
 			"Failed to create uevent\n");
 		return -EPERM;
 	}
-
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	dt2w_switch = 0;
+#endif
 	return 0;
 }
 

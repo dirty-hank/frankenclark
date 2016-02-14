@@ -1123,4 +1123,15 @@ config INPUT_MT_WRAPPER
 
 	  If unsure, say N.
 
+config TOUCHSCREEN_PREVENT_SLEEP
+	bool "Inihibit sleep on modified touchscreen drivers"
+	default y
+	help
+	This disables the sleep function of modified touchscreen drivers.
+
+config TOUCHSCREEN_DOUBLETAP2WAKE
+	tristate "DoubleTap2Wake for touchscreens"
+	select TOUCHSCREEN_PREVENT_SLEEP
+	default y
+
 endif
