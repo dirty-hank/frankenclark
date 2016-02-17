@@ -831,6 +831,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#endif
+
 	mdss_screen_on = true;
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -969,6 +973,9 @@ end:
 #endif
 #ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
 	s2w_scr_suspended = true;
+#endif
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
 #endif
 	return 0;
 }
