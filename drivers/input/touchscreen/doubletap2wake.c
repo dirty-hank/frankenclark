@@ -64,14 +64,14 @@ MODULE_LICENSE("GPLv2");
 
 /* Resources */
 int dt2w_switch = DT2W_DEFAULT;
-bool dt2w_scr_suspended = false;
 static cputime64_t tap_time_pre = 0;
+bool dt2w_scr_suspended = false;
 static int touch_x = 0, touch_y = 0, touch_nr = 0, x_pre = 0, y_pre = 0;
 static bool touch_x_called = false, touch_y_called = false, touch_cnt = true;
-static bool exec_count = true;
-//#ifndef CONFIG_HAS_EARLYSUSPEND
-//#static struct notifier_block dt2w_lcd_notif;
-//#endif
+static bool scr_suspended = false, exec_count = true;
+#ifndef CONFIG_HAS_EARLYSUSPEND
+static struct notifier_block dt2w_lcd_notif;
+#endif
 static struct input_dev * doubletap2wake_pwrdev;
 static DEFINE_MUTEX(pwrkeyworklock);
 static struct workqueue_struct *dt2w_input_wq;
@@ -190,7 +190,7 @@ static void dt2w_input_event(struct input_handle *handle, unsigned int type,
 		(code==ABS_MT_TRACKING_ID) ? "ID" :
 		"undef"), code, value);
 #endif
-	if (!dt2w_scr_suspended )
+	if (!dt2w_scr_suspended)
 		return;
 
 	if (code == ABS_MT_SLOT) {
@@ -222,7 +222,7 @@ static void dt2w_input_event(struct input_handle *handle, unsigned int type,
 
 static int input_dev_filter(struct input_dev *dev) {
 	if (strstr(dev->name, "touch") ||
-	    strstr(dev->name, "synaptics_dsx_i2c")) {
+            strstr(dev->name, "synaptics_dsx_i2c")) {
 		return 0;
 	} else {
 		return 1;
@@ -282,18 +282,19 @@ static struct input_handler dt2w_input_handler = {
 
 #ifdef CONFIG_POWERSUSPEND
 static void dt2w_power_suspend(struct power_suspend *h) {
-	dt2w_scr_suspended = true;
+        dt2w_scr_suspended = true;
 }
-
+ 
 static void dt2w_power_resume(struct power_suspend *h) {
-	dt2w_scr_suspended = false;
+        dt2w_scr_suspended = false;
 }
-
+ 
 static struct power_suspend dt2w_power_suspend_handler = {
-	.suspend = dt2w_power_suspend,
-	.resume = dt2w_power_resume,
+        .suspend = dt2w_power_suspend,
+        .resume = dt2w_power_resume,  
 };
 #endif
+
 
 /*
  * SYSFS stuff below here
@@ -380,8 +381,8 @@ static int __init doubletap2wake_init(void)
 		pr_err("%s: Failed to register dt2w_input_handler\n", __func__);
 
 #ifdef CONFIG_POWERSUSPEND
-	register_power_suspend(&dt2w_power_suspend_handler);
-#endif
+        register_power_suspend(&dt2w_power_suspend_handler);
+#endif   
 
 #ifndef ANDROID_TOUCH_DECLARED
 	android_touch_kobj = kobject_create_and_add("android_touch", NULL) ;
@@ -420,5 +421,4 @@ static void __exit doubletap2wake_exit(void)
 
 module_init(doubletap2wake_init);
 module_exit(doubletap2wake_exit);
-
 

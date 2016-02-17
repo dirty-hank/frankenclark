@@ -53,6 +53,9 @@
 #ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
 #include <linux/input/doubletap2wake.h>
 #endif
+#ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
+#include <linux/input/sweep2wake.h>
+#endif
 #endif
 
 #define DRIVER_NAME "synaptics_dsx_i2c"
@@ -6840,7 +6843,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 #ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
 #ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
-	if (dt2w_switch > 0) {
+	if (dt2w_switch || s2w_switch) {
 #endif
 		pr_info("suspend avoided!\n");
 
