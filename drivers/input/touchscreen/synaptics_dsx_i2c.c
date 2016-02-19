@@ -6842,8 +6842,13 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		return 0;
 
 #ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
-#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+#if defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE) && defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
 	if (dt2w_switch || s2w_switch) {
+#elif defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE) && !defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
+	if (dt2w_switch) {
+#elif !defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE) && defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
+        if (s2w_switch) {
+#else
 #endif
 		pr_info("suspend avoided!\n");
 
@@ -6851,7 +6856,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		synaptics_dsx_sensor_state(rmi4_data, STATE_PREVENT_SLEEP);
 
 		return 0;
-#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE                                                       
+#if defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE) || defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
 	}
 #endif
 #endif
