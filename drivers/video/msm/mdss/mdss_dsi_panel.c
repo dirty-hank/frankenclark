@@ -9,10 +9,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
 #ifdef CONFIG_POWERSUSPEND
 #include <linux/powersuspend.h>
-#endif
 #endif
 #include <linux/module.h>
 #include <linux/interrupt.h>
