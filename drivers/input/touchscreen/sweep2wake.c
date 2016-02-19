@@ -18,7 +18,6 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-#define DEBUG 1
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -49,7 +48,7 @@ MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPLv2");
 
 /* Tuneables */
-#define S2W_DEBUG		1
+#define S2W_DEBUG		0
 #define S2W_DEFAULT		0
 #define S2W_S2SONLY_DEFAULT	0
 #define S2W_PWRKEY_DUR          60
@@ -334,6 +333,7 @@ static ssize_t s2w_sweep2wake_dump(struct device *dev,
 static DEVICE_ATTR(sweep2wake, (S_IWUSR|S_IRUGO),
 	s2w_sweep2wake_show, s2w_sweep2wake_dump);
 
+/*
 static ssize_t s2w_s2w_s2sonly_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -356,6 +356,11 @@ static ssize_t s2w_s2w_s2sonly_dump(struct device *dev,
 
 static DEVICE_ATTR(s2w_s2sonly, (S_IWUSR|S_IRUGO),
 	s2w_s2w_s2sonly_show, s2w_s2w_s2sonly_dump);
+*/
+
+/* Link s2sonly to sweep2wake sysfs to work around a Kernel Adiutor bug */
+static DEVICE_ATTR(s2w_s2sonly, (S_IWUSR|S_IRUGO),
+	s2w_sweep2wake_show, s2w_sweep2wake_dump);
 
 static ssize_t s2w_version_show(struct device *dev,
 		struct device_attribute *attr, char *buf)

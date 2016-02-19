@@ -34,6 +34,7 @@
 #endif
 #include <linux/hrtimer.h>
 #include <asm-generic/cputime.h>
+#include <linux/wakelock.h>
 
 /* uncomment since no touchscreen defines android touch, do that here */
 //#define ANDROID_TOUCH_DECLARED
@@ -55,7 +56,7 @@ MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPLv2");
 
 /* Tuneables */
-#define DT2W_DEBUG		1
+#define DT2W_DEBUG		0
 #define DT2W_DEFAULT		0
 
 #define DT2W_PWRKEY_DUR		60
@@ -76,6 +77,7 @@ static struct input_dev * doubletap2wake_pwrdev;
 static DEFINE_MUTEX(pwrkeyworklock);
 static struct workqueue_struct *dt2w_input_wq;
 static struct work_struct dt2w_input_work;
+static struct wake_lock dt2w_wakelock;
 
 /* Read cmdline for dt2w */
 static int __init read_dt2w_cmdline(char *dt2w)
@@ -95,6 +97,8 @@ __setup("dt2w=", read_dt2w_cmdline);
 
 /* reset on finger release */
 static void doubletap2wake_reset(void) {
+        if (wake_lock_active(&dt2w_wakelock))
+                wake_unlock(&dt2w_wakelock);
 	exec_count = true;
 	touch_nr = 0;
 	tap_time_pre = 0;
@@ -138,6 +142,7 @@ static void new_touch(int x, int y) {
 	x_pre = x;
 	y_pre = y;
 	touch_nr++;
+	wake_lock_timeout(&dt2w_wakelock, HZ/2);
 }
 
 /* Doubletap2wake main function */
@@ -398,6 +403,8 @@ static int __init doubletap2wake_init(void)
 	if (rc) {
 		pr_warn("%s: sysfs_create_file failed for doubletap2wake_version\n", __func__);
 	}
+	
+	wake_lock_init(&dt2w_wakelock, WAKE_LOCK_SUSPEND, "dt2w_wakelock");
 
 err_input_dev:
 	input_free_device(doubletap2wake_pwrdev);
@@ -416,6 +423,7 @@ static void __exit doubletap2wake_exit(void)
 	destroy_workqueue(dt2w_input_wq);
 	input_unregister_device(doubletap2wake_pwrdev);
 	input_free_device(doubletap2wake_pwrdev);
+	wake_lock_destroy(&dt2w_wakelock);
 	return;
 }
 
