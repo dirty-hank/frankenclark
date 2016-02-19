@@ -6925,7 +6925,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 		return 0;
 
 #ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
-	if (rmi4_data->prevent_sleep) {
+	if (rmi4_data->prevent_sleep && (s2w_switch || dt2w_switch)) {
 		pr_info("resume avoided!\n");
 
 		synaptics_dsx_sensor_state(rmi4_data, STATE_ACTIVE);

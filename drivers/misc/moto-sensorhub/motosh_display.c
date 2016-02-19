@@ -45,6 +45,9 @@
 #ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
 #include <linux/input/doubletap2wake.h>
 #endif
+#ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
+#include <linux/input/sweep2wake.h>
+#endif
 struct qd_trace_event_t {
 	u8 op;
 	u8 buffer_id;
@@ -263,15 +266,19 @@ int motosh_display_handle_touch_locked(struct motosh_data *ps_motosh)
 	dev_info(&ps_motosh->client->dev,
 		"Sending uevent, MOTOSH TOUCH wake\n");
 
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	dt2w_switch = 0;
+#endif
+#ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
+	s2w_switch = 0;
+#endif
+
 	if (kobject_uevent_env(&ps_motosh->client->dev.kobj,
 		KOBJ_CHANGE, envp)) {
 		dev_err(&ps_motosh->client->dev,
 			"Failed to create uevent\n");
 		return -EPERM;
 	}
-#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
-	dt2w_switch = 0;
-#endif
 	return 0;
 }
 
