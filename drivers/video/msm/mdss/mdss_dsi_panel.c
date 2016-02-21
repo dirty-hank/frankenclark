@@ -25,6 +25,15 @@
 #include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+#ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
+#include <linux/input/sweep2wake.h>
+#endif
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+#include <linux/input/doubletap2wake.h>
+#endif
+#endif
+
 
 
 #include "mdss_dsi.h"
@@ -268,6 +277,18 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
 	int i, rc = 0;
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+#if defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE) || defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE)
+        bool prevent_sleep = false;
+#endif
+#if defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
+        prevent_sleep = (s2w_switch > 0) && (s2w_s2sonly == 0);
+#endif
+#if defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE)
+        prevent_sleep = prevent_sleep || (dt2w_switch > 0);
+#endif
+#endif
+
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -331,22 +352,30 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
 	} else {
-		if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
-			gpio_set_value((ctrl_pdata->bklt_en_gpio), 0);
-			gpio_free(ctrl_pdata->bklt_en_gpio);
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+		if (prevent_sleep)
+			rc = 0;
+		else {
+#endif
+			if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
+				gpio_set_value((ctrl_pdata->bklt_en_gpio), 0);
+				gpio_free(ctrl_pdata->bklt_en_gpio);
+			}
+			if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+				gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
+				gpio_free(ctrl_pdata->disp_en_gpio);
+			}
+			gpio_set_value((ctrl_pdata->rst_gpio), 0);
+			gpio_free(ctrl_pdata->rst_gpio);
+			if (gpio_is_valid(ctrl_pdata->mode_gpio))
+				gpio_free(ctrl_pdata->mode_gpio);
+	
+			rc = mdss_dsi_pinctrl_set_state(ctrl_pdata, false);
+			if (rc)
+				pr_err("pinctrl set suspend state failed %d\n", rc);
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
 		}
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-			gpio_free(ctrl_pdata->disp_en_gpio);
-		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		gpio_free(ctrl_pdata->rst_gpio);
-		if (gpio_is_valid(ctrl_pdata->mode_gpio))
-			gpio_free(ctrl_pdata->mode_gpio);
-
-		rc = mdss_dsi_pinctrl_set_state(ctrl_pdata, false);
-		if (rc)
-			pr_err("pinctrl set suspend state failed %d\n", rc);
+#endif
 	}
 	return rc;
 }
@@ -805,6 +834,7 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 	return ret;
 }
 
+#ifndef CONFIG_POWERSUSPEND
 #ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
 extern bool dt2w_scr_suspended;
 #endif
@@ -812,7 +842,7 @@ extern bool dt2w_scr_suspended;
 #ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
 extern bool s2w_scr_suspended;
 #endif
-
+#endif
 
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
@@ -831,6 +861,13 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 #ifdef CONFIG_POWERSUSPEND
 	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#else
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	dt2w_scr_suspended = false;
+#endif
+#ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
+	s2w_scr_suspended = false;
+#endif
 #endif
 
 	mdss_screen_on = true;
@@ -912,12 +949,6 @@ end:
 
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 	pr_debug("%s:-\n", __func__);
-#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
-	dt2w_scr_suspended = false;
-#endif
-#ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
-	s2w_scr_suspended = false;
-#endif
 	return 0;
 }
 
@@ -925,6 +956,18 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+#if defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE) || defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE)
+        bool prevent_sleep = false;
+#endif
+#if defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
+        prevent_sleep = (s2w_switch > 0) && (s2w_s2sonly == 0);
+#endif
+#if defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE)
+        prevent_sleep = prevent_sleep || (dt2w_switch > 0);
+#endif
+#endif
+ 
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -951,6 +994,16 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ctrl->set_acl)
 		ctrl->set_acl(ctrl, 1);
 
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+        if (prevent_sleep) {
+                ctrl->off_cmds.cmds[1].payload[0] = 0x11;
+        } else {
+                ctrl->off_cmds.cmds[1].payload[0] = 0x10;
+        }
+        pr_info("[prevent_touchscreen_sleep]: payload = %x \n", ctrl->off_cmds.cmds[1].payload[0]);
+#endif
+
+
 	if (!ctrl->ndx && pdata->mfd->quickdraw_in_progress)
 		pr_debug("%s: in quickdraw, SH wants the panel SLEEP OUT\n",
 			__func__);
@@ -966,14 +1019,15 @@ end:
 		pdata->panel_info.cabc_mode = CABC_OFF_MODE;
 
 	pr_debug("%s:-\n", __func__);
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#else
 #ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
 	dt2w_scr_suspended = true;
 #endif
 #ifdef CONFIG_TOUCHSCREEN_SWEEP2WAKE
 	s2w_scr_suspended = true;
 #endif
-#ifdef CONFIG_POWERSUSPEND
-	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
 #endif
 	return 0;
 }
