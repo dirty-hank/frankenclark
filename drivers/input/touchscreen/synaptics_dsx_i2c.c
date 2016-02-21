@@ -6912,7 +6912,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 		synaptics_dsx_enable_wakeup_source(rmi4_data, false);
 		synaptics_dsx_sensor_state(rmi4_data, STATE_ACTIVE);
-		synaptics_dsx_release_all(rmi4_data);
+		//synaptics_dsx_release_all(rmi4_data);
 		rmi4_data->prevent_sleep = false;
 
 		return 0;
