@@ -11,7 +11,6 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU General Public License for more details.
 */
-
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
@@ -140,12 +139,27 @@ static const struct regmap_config isl98611_regmap = {
 };
 
 /* i2c access */
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+#define I2C_RETRY 5
+#endif
+
 static int isl98611_read(struct isl98611_chip *pchip, unsigned int reg)
 {
 	int rval;
 	unsigned int reg_val;
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	int retry;
 
+	for (retry = 0; retry < I2C_RETRY; retry++) {
+		rval = regmap_read(pchip->regmap, reg, &reg_val);
+		if (rval >= 0)
+			break;
+		dev_info(pchip->dev, "I2C read retry %d\n", retry + 1);
+		usleep(ISL98611_RESET_DELAY_US);
+	}
+#else
 	rval = regmap_read(pchip->regmap, reg, &reg_val);
+#endif
 	if (rval < 0)
 		return rval;
 	return reg_val & 0xFF;
@@ -155,7 +169,19 @@ static int isl98611_write(struct isl98611_chip *pchip,
 			 unsigned int reg, unsigned int data)
 {
 	int rc;
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	int retry;
+
+	for (retry = 0; retry < I2C_RETRY; retry++) {
+		rc = regmap_write(pchip->regmap, reg, data);
+		if (rc >= 0)
+			break;
+		dev_info(pchip->dev, "I2C write retry %d\n", retry + 1);
+		usleep(ISL98611_RESET_DELAY_US);
+	}
+#else
 	rc = regmap_write(pchip->regmap, reg, data);
+#endif
 	if (rc < 0)
 		dev_err(pchip->dev, "i2c failed to write reg %#x", reg);
 	return rc;
@@ -327,6 +353,12 @@ static void isl98611_brightness_set(struct work_struct *work)
 	if (level != old_level && old_level == 0) {
 		rc = isl98611_update(pchip, REG_ENABLE,
 			VLED_EN_MASK, VLED_ON_VAL);
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+                rc |= isl98611_update(pchip, REG_CURRENT, SCALE_MASK, pdata->cur_scale);
+                rc |= isl98611_update(pchip, REG_CURRENT, CURRENT_MASK, pdata->led_current);
+                rc |= isl98611_update(pchip, REG_PWMCTRL, PWMRES_MASK, pdata->pwm_res);
+                rc |= isl98611_update(pchip, REG_DIMMCTRL, CABC_MASK, CABC_VAL);
+#endif
 		printk_ratelimited(KERN_INFO
 			"isl98611 backlight on %s\n", (rc ? "FAILED" : ""));
 	}
@@ -554,7 +586,7 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 		status = isl98611_read(pchip, REG_STATUS);
 		/* REG_ENABLE_DEFAULT - must have bitmask in enable register */
 		reg2 &= REG_ENABLE_DEFAULT;
-		if (status || regval || (reg2 != REG_ENABLE_DEFAULT)) {
+		if (status || (regval && (reg2 != REG_ENABLE_DEFAULT))) {
 			/* IC reset or reg ENABLE messed up => reinit the IC */
 			dev_err(pchip->dev,
 				"%s: REG_BRGHT_LSB is %#x, expected 0x00\n",
