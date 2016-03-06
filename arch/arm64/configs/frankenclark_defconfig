@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 3.10.98 Kernel Configuration
+# Linux/arm64 3.10.99 Kernel Configuration
 #
 CONFIG_ARM64=y
 CONFIG_64BIT=y
@@ -3924,7 +3924,7 @@ CONFIG_NLS_ISO8859_1=y
 # CONFIG_NLS_ISO8859_9 is not set
 # CONFIG_NLS_ISO8859_13 is not set
 # CONFIG_NLS_ISO8859_14 is not set
-# CONFIG_NLS_ISO8859_15 is not set
+CONFIG_NLS_ISO8859_15=y
 # CONFIG_NLS_KOI8_R is not set
 # CONFIG_NLS_KOI8_U is not set
 # CONFIG_NLS_MAC_ROMAN is not set
@@ -3938,7 +3938,7 @@ CONFIG_NLS_ISO8859_1=y
 # CONFIG_NLS_MAC_INUIT is not set
 # CONFIG_NLS_MAC_ROMANIAN is not set
 # CONFIG_NLS_MAC_TURKISH is not set
-# CONFIG_NLS_UTF8 is not set
+CONFIG_NLS_UTF8=y
 # CONFIG_DLM is not set
 # CONFIG_VIRTUALIZATION is not set
 
