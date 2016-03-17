@@ -711,10 +711,19 @@ static ssize_t store_max_cpus_online_susp(struct device *dev,
 				const char *buf, size_t count)
 {
 	unsigned int input;
-	int ret;
+	int ret, cpu;
 	ret = sscanf(buf, "%u", &input);
 	if ((ret != 1) || input < 1 || input > DEFAULT_MAX_CPUS_ONLINE)
 			return -EINVAL;
+
+	if (hotplug.suspended && hotplug.max_cpus_online_susp>1 && input<=1) {
+		cancel_delayed_work_sync(&hotplug_work);
+
+		for_each_possible_cpu(cpu) {
+			if ((cpu >= 1) && (cpu_online(cpu)))
+				cpu_down(cpu);
+		}
+	}
 
 	hotplug.max_cpus_online_susp = input;
 
