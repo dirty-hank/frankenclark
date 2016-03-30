@@ -32,6 +32,9 @@
 #include <linux/err.h>
 #include <linux/idr.h>
 #include <linux/sysfs.h>
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
 
 #include "zram_drv.h"
 
@@ -1022,6 +1025,53 @@ static void zram_reset_device(struct zram *zram)
 	zcomp_destroy(comp);
 }
 
+
+#ifdef CONFIG_POWERSUSPEND
+static void zram_compact(struct zram *zram)
+{
+	if (!down_read_trylock(&zram->init_lock))
+		return;
+
+	if (init_done(zram)) {
+		struct zram_meta *meta = zram->meta;
+		u64 data_size, new_size;
+
+		data_size = atomic64_read(&zram->stats.compr_data_size);
+
+		zs_compact(meta->mem_pool);
+
+		new_size = atomic64_read(&zram->stats.compr_data_size);
+		if (new_size < data_size)
+			pr_info("%s compacted. Saved %llu kb.\n", zram->disk->disk_name,
+			(unsigned long long)(data_size - new_size));
+	}
+	up_read(&zram->init_lock);
+}
+
+static int zram_compact_cb(int id, void *ptr, void *data)
+{
+#ifdef DEBUG
+        pr_info("compaction requested\n");
+#endif
+	zram_compact(ptr);
+	return 0;
+}
+
+static void zram_power_suspend(struct power_suspend *h) {
+	idr_for_each(&zram_index_idr, &zram_compact_cb, NULL);
+}
+
+static void zram_power_resume(struct power_suspend *h) {
+
+}
+
+static struct power_suspend zram_power_suspend_handler = {
+	.suspend = zram_power_suspend,
+	.resume = zram_power_resume,
+};
+#endif
+
+
 static ssize_t disksize_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
@@ -1433,6 +1483,11 @@ static int __init zram_init(void)
 		num_devices--;
 	}
 
+#ifdef CONFIG_POWERSUSPEND
+        register_power_suspend(&zram_power_suspend_handler);
+#endif
+
+
 	show_mem_notifier_register(&zram_show_mem_notifier_block);
 	return 0;
 
@@ -1443,6 +1498,9 @@ out_error:
 
 static void __exit zram_exit(void)
 {
+#ifdef CONFIG_POWERSUSPEND
+        unregister_power_suspend(&zram_power_suspend_handler);
+#endif
 	destroy_devices();
 }
 
