@@ -70,6 +70,7 @@ bool dt2w_scr_suspended = false;
 static int touch_x = 0, touch_y = 0, touch_nr = 0, x_pre = 0, y_pre = 0;
 static bool touch_x_called = false, touch_y_called = false, touch_cnt = true;
 static bool scr_suspended = false, exec_count = true;
+static bool registered;
 #ifndef CONFIG_HAS_EARLYSUSPEND
 static struct notifier_block dt2w_lcd_notif;
 #endif
@@ -301,6 +302,57 @@ static struct power_suspend dt2w_power_suspend_handler = {
 #endif
 
 
+static void unregister_dt2w(void)
+{
+	if (!registered)
+		return;
+
+	registered = false;
+	wake_lock_destroy(&dt2w_wakelock);
+	input_unregister_handler(&dt2w_input_handler);
+	cancel_work_sync(&dt2w_input_work);
+	destroy_workqueue(dt2w_input_wq);
+
+
+}
+
+static int register_dt2w(void)
+{
+	int rc = 0;
+
+	if (!dt2w_switch) {
+		unregister_dt2w();
+		return rc;
+	}
+
+	if (registered)
+		return rc;
+
+	dt2w_input_wq = create_workqueue("dt2wiwq");
+	if (!dt2w_input_wq) {
+		pr_err("%s: Failed to create dt2wiwq workqueue\n", __func__);
+		return -EFAULT;
+	}
+
+	INIT_WORK(&dt2w_input_work, dt2w_input_callback);
+
+	wake_lock_init(&dt2w_wakelock, WAKE_LOCK_SUSPEND, "dt2w_wakelock");
+
+	rc = input_register_handler(&dt2w_input_handler);
+	if (rc) {
+		pr_err("%s: Failed to register dt2w_input_handler\n", __func__);
+		goto err;
+	}
+
+	registered = true;
+
+	return rc;
+err:
+	wake_lock_destroy(&dt2w_wakelock);
+	return rc;
+}
+
+
 /*
  * SYSFS stuff below here
  */
@@ -320,6 +372,8 @@ static ssize_t dt2w_doubletap2wake_dump(struct device *dev,
 	if (buf[0] >= '0' && buf[0] <= '2' && buf[1] == '\n')
                 if (dt2w_switch != buf[0] - '0')
 		        dt2w_switch = buf[0] - '0';
+
+	register_dt2w();
 
 	return count;
 }
@@ -375,15 +429,7 @@ static int __init doubletap2wake_init(void)
 		goto err_input_dev;
 	}
 
-	dt2w_input_wq = create_workqueue("dt2wiwq");
-	if (!dt2w_input_wq) {
-		pr_err("%s: Failed to create dt2wiwq workqueue\n", __func__);
-		return -EFAULT;
-	}
-	INIT_WORK(&dt2w_input_work, dt2w_input_callback);
-	rc = input_register_handler(&dt2w_input_handler);
-	if (rc)
-		pr_err("%s: Failed to register dt2w_input_handler\n", __func__);
+	rc = register_dt2w();
 
 #ifdef CONFIG_POWERSUSPEND
         register_power_suspend(&dt2w_power_suspend_handler);
@@ -404,8 +450,6 @@ static int __init doubletap2wake_init(void)
 		pr_warn("%s: sysfs_create_file failed for doubletap2wake_version\n", __func__);
 	}
 	
-	wake_lock_init(&dt2w_wakelock, WAKE_LOCK_SUSPEND, "dt2w_wakelock");
-
 err_input_dev:
 	input_free_device(doubletap2wake_pwrdev);
 err_alloc_dev:
@@ -419,11 +463,9 @@ static void __exit doubletap2wake_exit(void)
 #ifndef ANDROID_TOUCH_DECLARED
 	kobject_del(android_touch_kobj);
 #endif
-	input_unregister_handler(&dt2w_input_handler);
-	destroy_workqueue(dt2w_input_wq);
 	input_unregister_device(doubletap2wake_pwrdev);
 	input_free_device(doubletap2wake_pwrdev);
-	wake_lock_destroy(&dt2w_wakelock);
+	unregister_dt2w();
 	return;
 }
 
