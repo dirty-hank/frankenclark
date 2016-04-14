@@ -68,6 +68,7 @@ static int touch_x = 0, touch_y = 0;
 static bool touch_x_called = false, touch_y_called = false;
 static bool scr_suspended = false, exec_count = true;
 static bool scr_on_touch = false, barrier[2] = {false, false};
+static bool registered;
 static struct input_dev * sweep2wake_pwrdev;
 static DEFINE_MUTEX(pwrkeyworklock);
 static struct workqueue_struct *s2w_input_wq;
@@ -306,6 +307,53 @@ static struct power_suspend s2w_power_suspend_handler = {
         .resume = s2w_power_resume,  
 };
 #endif
+
+
+static void unregister_s2w(void)
+{
+       if (!registered)
+               return;
+
+       registered = false;
+       input_unregister_handler(&s2w_input_handler);
+       cancel_work_sync(&s2w_input_work);
+       destroy_workqueue(s2w_input_wq);
+
+
+}
+
+static int register_s2w(void)
+{
+	int rc = 0;
+
+	if (!s2w_switch) {
+		unregister_s2w();
+		return rc;
+	}
+
+	if (registered)
+		return rc;
+
+	s2w_input_wq = create_workqueue("s2wiwq");
+	if (!s2w_input_wq) {
+		pr_err("%s: Failed to create s2wiwq workqueue\n", __func__);
+		return -EFAULT;
+	}
+
+	INIT_WORK(&s2w_input_work, s2w_input_callback);
+
+	rc = input_register_handler(&s2w_input_handler);
+	if (rc) {
+		pr_err("%s: Failed to register s2w_input_handler\n", __func__);
+		goto err;
+	}
+
+	registered = true;
+
+err:
+	return rc;
+}
+
                                   
 /*
  * SYSFS stuff below here
@@ -326,6 +374,8 @@ static ssize_t s2w_sweep2wake_dump(struct device *dev,
 	if (buf[0] >= '0' && buf[0] <= '1' && buf[1] == '\n')
                 if (s2w_switch != buf[0] - '0')
 		        s2w_switch = buf[0] - '0';
+
+	register_s2w();
 
 	return count;
 }
@@ -410,15 +460,7 @@ static int __init sweep2wake_init(void)
 		goto err_input_dev;
 	}
 
-	s2w_input_wq = create_workqueue("s2wiwq");
-	if (!s2w_input_wq) {
-		pr_err("%s: Failed to create s2wiwq workqueue\n", __func__);
-		return -EFAULT;
-	}
-	INIT_WORK(&s2w_input_work, s2w_input_callback);
-	rc = input_register_handler(&s2w_input_handler);
-	if (rc)
-		pr_err("%s: Failed to register s2w_input_handler\n", __func__);
+	rc = register_s2w();
 
 #ifdef CONFIG_POWERSUSPEND
         register_power_suspend(&s2w_power_suspend_handler);  
@@ -456,10 +498,9 @@ static void __exit sweep2wake_exit(void)
 #ifndef ANDROID_TOUCH_DECLARED
 	kobject_del(android_touch_kobj);
 #endif
-	input_unregister_handler(&s2w_input_handler);
-	destroy_workqueue(s2w_input_wq);
 	input_unregister_device(sweep2wake_pwrdev);
 	input_free_device(sweep2wake_pwrdev);
+	unregister_s2w();
 	return;
 }
 
