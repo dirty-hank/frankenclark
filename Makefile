@@ -378,16 +378,9 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-FRANKEN_CFLAGS := -ffast-math -fgcse-after-reload -fgcse-lm -fgcse-sm \
-		-fgraphite -fgraphite-identity -floop-block -floop-flatten \
-		-floop-interchange -floop-parallelize-all -floop-strip-mine \
-		-fmodulo-sched -fmodulo-sched-allow-regmoves \
-		-fno-aggressive-loop-optimizations -fno-delete-null-pointer-checks \
-		-fpredictive-commoning -fsched-spec-load -fsingle-precision-constant \
-		-ftree-loop-distribute-patterns -ftree-loop-linear -ftree-loop-vectorize \
-                -ftree-partial-pre -ftree-slp-vectorize -funswitch-loops -fvect-cost-model \
-		-march=armv8-a+crc+crypto -mtune=cortex-a57.cortex-a53 -mcpu=cortex-a57.cortex-a53
-
+FRANKEN_CFLAGS := -march=armv8-a+crc+crypto -mtune=cortex-a57.cortex-a53 -mcpu=cortex-a57.cortex-a53 \
+		--param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=2048 \
+		--param simultaneous-prefetches=6 --param prefetch-latency=400
 
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
