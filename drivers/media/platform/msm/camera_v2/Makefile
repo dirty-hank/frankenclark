@@ -1,3 +1,6 @@
+KBUILD_CFLAGS := $(subst -O3,-O2,$(KBUILD_CFLAGS))
+KBUILD_CFLAGS := $(subst -ffast-math,,$(KBUILD_CFLAGS))
+
 ccflags-y += -Idrivers/media/platform/msm/camera_v2
 ccflags-y += -Idrivers/media/platform/msm/camera_v2/sensor
 ccflags-y += -Idrivers/media/platform/msm/camera_v2/codecs

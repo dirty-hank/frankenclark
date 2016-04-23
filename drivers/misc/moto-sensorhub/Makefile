@@ -1,3 +1,6 @@
+KBUILD_CFLAGS := $(subst -O3,-O2,$(KBUILD_CFLAGS))
+KBUILD_CFLAGS := $(subst -ffast-math,,$(KBUILD_CFLAGS))
+
 motosh-objs := motosh_core.o \
 		motosh_flash.o \
 		motosh_ioctl.o \
