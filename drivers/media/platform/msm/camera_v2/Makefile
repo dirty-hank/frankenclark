@@ -1,5 +1,7 @@
 KBUILD_CFLAGS := $(subst -O3,-O2,$(KBUILD_CFLAGS))
-KBUILD_CFLAGS := $(subst -ffast-math,,$(KBUILD_CFLAGS))
+KBUILD_CFLAGS := $(subst -march=armv8-a+crc+crypto -mtune=cortex-a57.cortex-a53 -mcpu=cortex-a57.cortex-a53,,$(KBUILD_CFLAGS))
+KBUILD_CFLAGS := $(subst --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=2048,,$(KBUILD_CFLAGS))
+KBUILD_CFLAGS := $(subst --param simultaneous-prefetches=6 --param prefetch-latency=400 -ffast-math,,$(KBUILD_CFLAGS))
 
 ccflags-y += -Idrivers/media/platform/msm/camera_v2
 ccflags-y += -Idrivers/media/platform/msm/camera_v2/sensor
