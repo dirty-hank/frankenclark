@@ -182,7 +182,12 @@ static void detect_doubletap2wake(int x, int y, bool st)
 
 static void dt2w_input_callback(struct work_struct *unused) {
 
-	detect_doubletap2wake(touch_x, touch_y, true);
+	if (!in_phone_call)
+		detect_doubletap2wake(touch_x, touch_y, true);
+#if DT2W_DEBUG
+	else
+		pr_info("doubletap2wake: in_phone_call skipping detection\n");
+#endif
 
 	return;
 }
