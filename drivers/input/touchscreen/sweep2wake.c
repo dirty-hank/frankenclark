@@ -192,8 +192,12 @@ static void detect_sweep2wake(int x, int y, bool st)
 
 static void s2w_input_callback(struct work_struct *unused) {
 
-	detect_sweep2wake(touch_x, touch_y, true);
-
+	if (!in_phone_call)
+		detect_sweep2wake(touch_x, touch_y, true);
+#if S2W_DEBUG
+	else
+		pr_info("sweep2wake: in_phone_call skipping detection\n");
+#endif
 	return;
 }
 

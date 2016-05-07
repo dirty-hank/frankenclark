@@ -27,6 +27,10 @@
 #include <sound/audio_cal_utils.h>
 #include "q6voice.h"
 
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+bool in_phone_call = false;
+#endif
+
 #define TIMEOUT_MS 300
 
 
@@ -5207,7 +5211,10 @@ int voc_end_voice_call(uint32_t session_id)
 	}
 	if (common.ec_ref_ext)
 		voc_set_ext_ec_ref(AFE_PORT_INVALID, false);
-
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	in_phone_call = false;
+	pr_info("%s: in_phone_call: %s\n", __func__, (in_phone_call ? "true" : "false"));
+#endif
 	mutex_unlock(&v->lock);
 	return ret;
 }
@@ -5527,6 +5534,10 @@ int voc_start_voice_call(uint32_t session_id)
 		ret = -EINVAL;
 		goto fail;
 	}
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	in_phone_call = true;
+	pr_info("%s: in_phone_call: %s\n", __func__, (in_phone_call ? "true" : "false"));
+#endif
 fail:
 	mutex_unlock(&v->lock);
 	return ret;
